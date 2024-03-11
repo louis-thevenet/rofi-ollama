@@ -46,6 +46,8 @@
               config.treefmt.build.devShell
             ];
             RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
+            RUSTFLAGS="--cfg rofi_next";
+            ROFI_PLUGIN_PATH="./target/debug";
 
             buildInputs = nonRustDeps;
             nativeBuildInputs = with pkgs; [
