@@ -1,6 +1,7 @@
 rofi_mode::export_mode!(Mode<'_>);
 
 use ollama_rs::Ollama;
+use std::{process::Command, thread};
 use tokio::runtime::Runtime;
 struct Mode<'rofi> {
     api: rofi_mode::Api<'rofi>,
@@ -8,19 +9,20 @@ struct Mode<'rofi> {
 }
 
 impl<'rofi> rofi_mode::Mode<'rofi> for Mode<'rofi> {
-    const NAME: &'static str = "rofi-ollama\0";
+    const NAME: &'static str = "ollama\0";
 
     fn init(api: rofi_mode::Api<'rofi>) -> Result<Self, ()> {
         let rt = Runtime::new().unwrap();
 
         let ollama = Ollama::default();
 
-        let entries = rt
-            .block_on(ollama.list_local_models())
-            .unwrap()
-            .iter()
-            .map(|m| m.name.clone())
-            .collect::<Vec<String>>();
+        let entries = match rt.block_on(ollama.list_local_models()) {
+            Ok(models) => models
+                .iter()
+                .map(|m| m.name.clone())
+                .collect::<Vec<String>>(),
+            Err(_) => vec![String::from("Error encountered. Is the server running ?")],
+        };
 
         Ok(Self { api, entries })
     }
@@ -51,22 +53,33 @@ impl<'rofi> rofi_mode::Mode<'rofi> for Mode<'rofi> {
                 alt: false,
                 selected,
             } => {
-                println!("Selected option {:?}", self.entries[selected]);
+                let model = self.entries[selected].clone();
+                //let prompt = input.clone();
+                let prompt = "";
+                let command = format!("ollama run {model} {prompt}");
+                thread::spawn(move || {
+                    Command::new("kitty")
+                        .arg("--hold")
+                        .arg("bash")
+                        .arg("-c")
+                        .arg(command)
+                        .output()
+                        .expect("failed to execute process")
+                });
+
                 return rofi_mode::Action::Exit;
             }
             rofi_mode::Event::Ok {
                 alt: true,
                 selected,
             } => {
-                self.api.set_display_name(&*self.entries[selected]);
+                let model = self.entries[selected].clone();
+                self.entries = vec![];
             }
             rofi_mode::Event::CustomInput {
                 alt: false,
                 selected: _,
-            } => {
-                self.entries.push(input.into());
-                input.clear();
-            }
+            } => {}
             rofi_mode::Event::CustomInput {
                 alt: true,
                 selected: _,
