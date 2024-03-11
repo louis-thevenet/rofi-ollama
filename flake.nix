@@ -1,53 +1,74 @@
 {
-  description = "A Nix-flake-based Rust development environment";
-
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.*.tar.gz";
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    systems.url = "github:nix-systems/default";
+
+    # Dev tools
+    treefmt-nix.url = "github:numtide/treefmt-nix";
   };
 
-  outputs = {
-    self,
-    nixpkgs,
-    rust-overlay,
-  }: let
-    overlays = [
-      rust-overlay.overlays.default
-      (final: prev: {
-        rustToolchain = let
-          rust = prev.rust-bin;
+  outputs = inputs:
+    inputs.flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = import inputs.systems;
+      imports = [
+        inputs.treefmt-nix.flakeModule
+      ];
+      perSystem =
+        { config
+        , self'
+        , pkgs
+        , lib
+        , system
+        , ...
+        }:
+        let
+          cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+          nonRustDeps = [
+            pkgs.libiconv
+          ];
+          rust-toolchain = pkgs.symlinkJoin {
+            name = "rust-toolchain";
+            paths = [ pkgs.rustc pkgs.cargo pkgs.cargo-watch pkgs.rust-analyzer pkgs.rustPlatform.rustcSrc ];
+          };
         in
-          if builtins.pathExists ./rust-toolchain.toml
-          then rust.fromRustupToolchainFile ./rust-toolchain.toml
-          else rust.stable.latest.default;
-      })
-    ];
-    supportedSystems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
-    forEachSupportedSystem = f:
-      nixpkgs.lib.genAttrs supportedSystems (system:
-        f {
-          pkgs = import nixpkgs {inherit overlays system;};
-        });
-  in {
-    devShells = forEachSupportedSystem ({pkgs}: {
-      default = pkgs.mkShell {
+        {
+          # Rust package
+          packages.default = pkgs.rustPlatform.buildRustPackage {
+            inherit (cargoToml.package) name version;
+            src = ./.;
+            cargoLock.lockFile = ./Cargo.lock;
+          };
 
-        nativeBuildInputs = with pkgs; [
-          pkg-config
-          pango
-        ];
+          # Rust dev environment
+          devShells.default = pkgs.mkShell {
+            inputsFrom = [
+              config.treefmt.build.devShell
+            ];
+            RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
 
-        buildInputs = with pkgs; [
-        ];
+            buildInputs = nonRustDeps;
+            nativeBuildInputs = with pkgs; [
+              just
+              rust-toolchain
+              clippy
+              pkg-config
+              openssl
+              cairo
+              pango
+            ];
+            RUST_BACKTRACE = 1;
+          };
 
-        packages = with pkgs; [
-          rustToolchain
-          rust-analyzer
-        ];
-      };
-    });
-  };
+          # Add your auto-formatters here.
+          # cf. https://numtide.github.io/treefmt/
+          treefmt.config = {
+            projectRootFile = "flake.nix";
+            programs = {
+              nixpkgs-fmt.enable = true;
+              rustfmt.enable = true;
+            };
+          };
+        };
+    };
 }
