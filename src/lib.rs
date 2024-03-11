@@ -1,5 +1,7 @@
 rofi_mode::export_mode!(Mode<'_>);
 
+use ollama_rs::Ollama;
+use tokio::runtime::Runtime;
 struct Mode<'rofi> {
     api: rofi_mode::Api<'rofi>,
     entries: Vec<String>,
@@ -8,12 +10,19 @@ struct Mode<'rofi> {
 impl<'rofi> rofi_mode::Mode<'rofi> for Mode<'rofi> {
     const NAME: &'static str = "rofi-ollama\0";
 
-    fn init(mut api: rofi_mode::Api<'rofi>) -> Result<Self, ()> {
-        api.set_display_name("A basic Rofi plugin");
-        Ok(Self {
-            api,
-            entries: Vec::new(),
-        })
+    fn init(api: rofi_mode::Api<'rofi>) -> Result<Self, ()> {
+        let rt = Runtime::new().unwrap();
+
+        let ollama = Ollama::default();
+
+        let entries = rt
+            .block_on(ollama.list_local_models())
+            .unwrap()
+            .iter()
+            .map(|m| m.name.clone())
+            .collect::<Vec<String>>();
+
+        Ok(Self { api, entries })
     }
 
     fn entries(&mut self) -> usize {

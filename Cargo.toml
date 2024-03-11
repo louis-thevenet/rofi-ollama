@@ -9,4 +9,6 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
+ollama-rs = "0.1.7"
 rofi-mode = "0.4.0"
+tokio = {version="1.36.0", features = ["rt-multi-thread"]}
