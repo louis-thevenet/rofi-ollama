@@ -1,7 +1,6 @@
 rofi_mode::export_mode!(Mode<'_>);
 use serde::Deserialize;
 use std::{process::Command, thread};
-use tokio::runtime::Runtime;
 
 #[derive(Deserialize, Debug)]
 struct OllamaModel {
@@ -22,21 +21,15 @@ impl<'rofi> rofi_mode::Mode<'rofi> for Mode<'rofi> {
     const NAME: &'static str = "ollama\0";
 
     fn init(api: rofi_mode::Api<'rofi>) -> Result<Self, ()> {
-        let rt = Runtime::new().unwrap();
-
-        let reqwest_client = reqwest::Client::new();
         let uri = String::from("http://127.0.0.1:11434/api/tags");
-
-        let entries = match rt.block_on(reqwest_client.get(uri).send()) {
+        let entries = match reqwest::blocking::get(uri) {
             Err(_) => vec![String::from("Is the server running ?")],
-            Ok(data) => {
-                serde_json::from_slice::<ListOllamaModel>(&rt.block_on(data.bytes()).unwrap())
-                    .unwrap()
-                    .models
-                    .iter()
-                    .map(|m| m.name.clone())
-                    .collect()
-            }
+            Ok(data) => serde_json::from_slice::<ListOllamaModel>(&(data.bytes()).unwrap())
+                .unwrap()
+                .models
+                .iter()
+                .map(|m| m.name.clone())
+                .collect(),
         };
 
         Ok(Self { api, entries })
@@ -84,12 +77,9 @@ impl<'rofi> rofi_mode::Mode<'rofi> for Mode<'rofi> {
 
                 return rofi_mode::Action::Exit;
             }
-            rofi_mode::Event::Ok {
-                alt: true,
-                selected,
-            } => {
-                let model = self.entries[selected].clone();
-                self.entries = vec![];
+            rofi_mode::Event::Ok { alt: true, .. } => {
+                // let model = self.entries[selected].clone();
+                // self.entries = vec![];
             }
             rofi_mode::Event::CustomInput {
                 alt: false,
