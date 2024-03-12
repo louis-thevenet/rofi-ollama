@@ -24,13 +24,22 @@
         }:
         let
           cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-          nonRustDeps = [
-            pkgs.libiconv
-          ];
           rust-toolchain = pkgs.symlinkJoin {
             name = "rust-toolchain";
             paths = [ pkgs.rustc pkgs.cargo pkgs.cargo-watch pkgs.rust-analyzer pkgs.rustPlatform.rustcSrc ];
           };
+
+          buildInputs = with pkgs; [
+            glib
+            openssl
+            cairo
+            pango
+
+          ];
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+
+          ];
         in
         {
           # Rust package
@@ -38,6 +47,12 @@
             inherit (cargoToml.package) name version;
             src = ./.;
             cargoLock.lockFile = ./Cargo.lock;
+
+            RUST_BACKTRACE = 1;
+            RUSTFLAGS = "--cfg rofi_next";
+
+            nativeBuildInputs = nativeBuildInputs;
+            buildInputs = buildInputs;
           };
 
           # Rust dev environment
@@ -45,21 +60,13 @@
             inputsFrom = [
               config.treefmt.build.devShell
             ];
-            RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
+            RUST_BACKTRACE = 1;
             RUSTFLAGS = "--cfg rofi_next";
             ROFI_PLUGIN_PATH = "./target/debug";
+            RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
 
-            buildInputs = nonRustDeps;
-            nativeBuildInputs = with pkgs; [
-              just
-              rust-toolchain
-              clippy
-              pkg-config
-              openssl
-              cairo
-              pango
-            ];
-            RUST_BACKTRACE = 1;
+            nativeBuildInputs = nativeBuildInputs;
+            buildInputs =  buildInputs ++ [ rust-toolchain pkgs.clippy ];
           };
 
           # Add your auto-formatters here.
