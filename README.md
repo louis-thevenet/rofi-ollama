@@ -1,6 +1,8 @@
 # rofi-ollama
 A [rofi](https://github.com/davatorium/rofi) plugin that asks [ollama](https://github.com/ollama/ollama) about available models to quickly start new conversations.
 
+It only works with kitty for the moment, I am still looking for a general way of opnening terminal emulators. You can **open an issue** for other terminals and I'll add it. 
+
 # Example
 https://github.com/louis-thevenet/rofi-ollama/assets/55986107/46c66a7c-4d3a-4679-bcca-14798c955f3e
 
