@@ -25,7 +25,7 @@ You will need `cargo` + some dependencies:
 - `cairo`
 
 ### Build the plugin
-For unreleased versions of `rofi`, you will need to `export ROFI_PLUGIN_PATH=$(pwd)/target/release`.
+For unreleased versions of `rofi`, you will need to `set RUSTFLAGS=--cfg rofi_next`.
 Then:
 
     cargo build --release
