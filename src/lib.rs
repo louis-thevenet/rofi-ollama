@@ -66,7 +66,7 @@ impl<'rofi> rofi_mode::Mode<'rofi> for Mode<'rofi> {
                 let prompt = "";
                 let command = format!("ollama run {model} {prompt}");
                 thread::spawn(move || {
-                    Command::new("kitty")
+                    Command::new("$TERMINAL")
                         .arg("--hold")
                         .arg("bash")
                         .arg("-c")
